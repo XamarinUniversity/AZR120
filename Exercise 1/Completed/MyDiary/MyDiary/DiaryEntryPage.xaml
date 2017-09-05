@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:cvt="clr-namespace:XamarinUniversity.Converters;assembly=XamU.Infrastructure"
+             x:Class="MyDiary.DiaryEntryPage"
+             Title="{Binding SelectedEntry.ShortTitle}">
+
+  <ContentPage.ToolbarItems>
+    <ToolbarItem Icon="new_entry.png" Text="Add" Command="{Binding AddEntry}" />
+    <ToolbarItem Icon="trash.png" Text="Delete" Command="{Binding DeleteEntry}" />
+  </ContentPage.ToolbarItems>
+
+  <Grid RowSpacing="20" Padding="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid.Resources>
+      <ResourceDictionary>
+        <cvt:NullOrEmptyBooleanConverter x:Key="nullConverter" Empty="False" NotEmpty="True" />
+      </ResourceDictionary>
+    </Grid.Resources>
+
+    <Entry Text="{Binding SelectedEntry.Title, Mode=TwoWay}" Placeholder="Enter Title" IsEnabled="{Binding SelectedEntry, Converter={StaticResource nullConverter}}" />
+    <Frame Grid.Row="1" HasShadow="False" OutlineColor="#d5d5d5" Padding="0">
+        <Editor Text="{Binding SelectedEntry.Text, Mode=TwoWay}" IsEnabled="{Binding SelectedEntry, Converter={StaticResource nullConverter}}"  />
+	  </Frame>
+    <Button Text="Save" Command="{Binding SaveEntry}" Grid.Row="2" />
+    
+  </Grid>
+  
+</ContentPage>

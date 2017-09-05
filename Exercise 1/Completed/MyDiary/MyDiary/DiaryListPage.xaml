@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+						 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+						 xmlns:beh="clr-namespace:XamarinUniversity.Infrastructure;assembly=XamU.Infrastructure"
+                         xmlns:dbg="clr-namespace:XamarinUniversity.Converters;assembly=XamU.Infrastructure"
+						 x:Class="MyDiary.DiaryListPage"
+						 IsBusy="{Binding IsBusy}"
+						 Title="My Private Thoughts"
+						 Icon="menu.png"
+						 x:Name="MainPage">
+
+	<ContentPage.Padding>
+	<OnPlatform x:TypeArguments="Thickness" iOS="0,20,0,0" />
+	</ContentPage.Padding>
+	
+	<ListView ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry,Mode=TwoWay}" 
+						RefreshCommand="{Binding Refresh}" IsPullToRefreshEnabled="True">
+		<ListView.Behaviors>
+			<beh:EventToCommandBehavior Command="{Binding SelectEntry}" EventName="ItemTapped" />
+		</ListView.Behaviors>
+		<ListView.ItemTemplate>
+			<DataTemplate>
+				<TextCell Text="{Binding Title, Converter={dbg:DebugConverter}}" Detail="{Binding UpdatedAt, StringFormat=G}">
+					<TextCell.ContextActions>
+						<MenuItem Command="{Binding BindingContext.DeleteEntry, Source={x:Reference MainPage}}" 
+											CommandParameter="{Binding .}" Text="Delete" IsDestructive="True" />
+					</TextCell.ContextActions>
+				</TextCell>
+			</DataTemplate>
+		</ListView.ItemTemplate>
+	</ListView>
+	
+</ContentPage>
