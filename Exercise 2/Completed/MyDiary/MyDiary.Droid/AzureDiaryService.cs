@@ -7,7 +7,7 @@ namespace MyDiary.Services
 	{
 		private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
 		{
-			return azureClient.LoginAsync(Android.App.Application.Context., provider);
+			return azureClient.LoginAsync(Android.App.Application.Context, provider);
 		}
 	}
 }
