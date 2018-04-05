@@ -28,14 +28,14 @@ namespace MyDiary.Services
             azureClient = new MobileServiceClient(AzureServiceUrl);
         }
 
-		/// <summary>
-		/// Authenticate using our social provider so Azure knows who we are.
-		/// </summary>
-		/// <returns>The async.</returns>
-		Task LoginAsync()
-		{
-			return PlatformLoginAsync(MobileServiceAuthenticationProvider.Facebook);
-		}
+        /// <summary>
+        /// Authenticate using our social provider so Azure knows who we are.
+        /// </summary>
+        /// <returns>The async.</returns>
+        Task LoginAsync()
+        {
+            return PlatformLoginAsync(MobileServiceAuthenticationProvider.Facebook);
+        }
 
         /// <summary>
         ///     Initialize the service and retrieve the offline synch. table.
@@ -52,8 +52,8 @@ namespace MyDiary.Services
             await azureClient.SyncContext.InitializeAsync(store, new MobileServiceSyncHandler());
             diaryTable = azureClient.GetSyncTable<DiaryEntry>();
 
-			// Lab1: added call to purge any offline records.
-			await diaryTable.PurgeAsync(true);
+            // Lab1: added call to purge any offline records.
+            await diaryTable.PurgeAsync(true);
         }
 
         /// <summary>
@@ -124,28 +124,28 @@ namespace MyDiary.Services
             }
             catch (MobileServicePushFailedException ex)
             {
-				if (ex.PushResult.Status == MobileServicePushStatus.CancelledByAuthenticationError)
-				{
-					await LoginAsync();
-					await SynchronizeAsync();
-					return;
-				}
+                if (ex.PushResult.Status == MobileServicePushStatus.CancelledByAuthenticationError)
+                {
+                    await LoginAsync();
+                    await SynchronizeAsync();
+                    return;
+                }
 
                 if (ex.PushResult != null)
                     foreach (var result in ex.PushResult.Errors)
                         await ResolveErrorAsync(result);
             }
-			catch (MobileServiceInvalidOperationException ex)
-			{
-				if (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
-				{
-					await LoginAsync();
-					await SynchronizeAsync();
-					return;
-				}
+            catch (MobileServiceInvalidOperationException ex)
+            {
+                if (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    await LoginAsync();
+                    await SynchronizeAsync();
+                    return;
+                }
 
-				throw;
-			}
+                throw;
+            }
         }
 
         /// <summary>

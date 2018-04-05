@@ -3,11 +3,11 @@ using Microsoft.WindowsAzure.MobileServices;
 
 namespace MyDiary.Services
 {
-	partial class AzureDiaryService
-	{
-		private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
-		{
-			return azureClient.LoginAsync(Android.App.Application.Context, provider);
-		}
-	}
+    partial class AzureDiaryService
+    {
+        private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
+        {
+            return azureClient.LoginAsync(Android.App.Application.Context, provider);
+        }
+    }
 }

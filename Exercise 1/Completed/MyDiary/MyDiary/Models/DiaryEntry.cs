@@ -7,7 +7,7 @@ namespace MyDiary.Models
     /// <summary>
     /// A single diary entry in our Azure table.
     /// </summary>
-	[JsonObject(Title = "diaryentry2")]
+    [JsonObject(Title = "diaryentry2")]
     public class DiaryEntry
     {
         /// <summary>
@@ -42,5 +42,6 @@ namespace MyDiary.Models
         /// </summary>
         [Version]
         public string AzureVersion { get; set; }
+
    }
 }

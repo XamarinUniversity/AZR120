@@ -4,7 +4,6 @@
     "Microsoft.Azure.Mobile.Client.SQLiteStore": "3.1.0",
     "Microsoft.NETCore.UniversalWindowsPlatform": "5.2.3",
     "Newtonsoft.Json": "10.0.3",
-    "SQLitePCLRaw.bundle_green": "1.1.8",
     "Xam.Plugin.Connectivity": "3.0.3",
     "Xamarin.Forms": "2.4.0.282",
     "XamarinUniversity.Core": "1.0.161128",
