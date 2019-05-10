@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+    <title>Authentication with Azure App Services</title>
+    <link rel="stylesheet" type="text/css" href="./parts/res/styles/normalize.css">
+    <link rel="stylesheet" type="text/css" href="./parts/res/styles/prettify.css">
+    <link rel="stylesheet" type="text/css" href="./parts/res/styles/styles.css">
+</head>
+
+<body>
+    <!-- This will be filled in at runtime -->
+    <header role="course-title"></header>
+
+    <section id="main">
+
+        <h2>Before you begin</h2>
+        <p>
+        This is a cross-platform class which uses Xamarin.Forms to to target iOS, Android, or Windows. To complete the coding exercises, you will need a Xamarin development environment with either an emulator/simulator or a device to run the exercise on. Please read the <a href="https://university.xamarin.com/resources/setup-requirements">setup requirements</a> if you need help installing the Xamarin development environment.
+        </p>
+
+        <p>
+        This class assumes you have already set up an Azure account and have a basic knowledge of the Azure management portal. If you have not done anything with Azure yet, then please review the materials from <a target="_blank" href="">AZR101 - Introduction to Azure</a>.
+        </p>
+
+        <h2>Overview</h2>
+        <p>
+            This class dives into the authentication aspects of Azure Mobile applications. We will examine how to enable authentication in the Azure portal, what impact that has on your service, and then how to properly connect and authorize your application to continue to utilize the APIs of your Azure App Service. 
+        </p>
+
+        <h2>Lecture</h2>
+        <p><a href="./parts/slides.pdf">AZR120 - Authentication with Azure App Services</a>.</p>
+
+        <h2>Objectives</h2>
+        <ol>
+            <li>Introduce authentication options</li>
+            <li>Require authentication in an Azure App Service</li>
+            <li>Log in to your mobile service</li>
+            <li>Add support for multiple users</li>
+        </ol>
+
+        <h2>Exercises</h2>
+        <p>
+            Exercise materials are available from <a href="https://github.com/XamarinUniversity/AZR120/">GitHub</a>. The code can be cloned through a desktop Git client or <a href="https://github.com/XamarinUniversity/AZR120/archive/master.zip">downloaded directly</a> as a ZIP file.
+        </p>
+        <ol>
+
+            <li><div class="objective">Add support to log in to an Azure App Service</div>
+            <a href="./parts/part1.html">Exercise</a>
+            <br />
+            You will start by adding support to authenticate to an existing Azure service using a social provider.
+            </li>
+
+            <li><div class="objective">Restore the user credentials</div>
+            <a href="./parts/part2.html">Exercise</a>
+            <br />
+            Next, you will will store the user id and token in secure storage and restore it when the application is relaunched.
+            </li>
+
+            <li><div class="objective">Demonstration: Add support to refresh tokens</div>
+            <a href="./parts/part3.html">Demonstration</a>
+            <br />
+            Here we will explore a completed project which has support for refreshing the user token.
+            </li>
+
+            <li><div class="objective">Demonstration: Add support for multiple users</div>
+            <a href="./parts/part4.html">Demonstration</a>
+            <br />
+            Here we will explore a completed proejct which has support for refreshing the user token.
+            </li>
+        </ol>
+
+        <h2>Additional References</h2>
+         <div class="wslist">
+            <a target="_blank" href="https://azure.microsoft.com/en-us/documentation/articles/app-service-mobile-how-to-configure-active-directory-authentication/">Configure your App Service to use Azure Active Directory</a>
+            <a target="_blank" href="https://azure.microsoft.com/en-us/documentation/articles/app-service-mobile-how-to-configure-facebook-authentication/">Configure your App Service to use Facebook</a>
+            <a target="_blank" href="https://azure.microsoft.com/en-us/documentation/articles/app-service-mobile-how-to-configure-google-authentication/">Configure your App Service to use Google</a>
+            <a target="_blank" href="https://azure.microsoft.com/en-us/documentation/articles/app-service-mobile-how-to-configure-twitter-authentication/">Configure your App Service to use Twitter</a>
+            <a target="_blank" href="https://azure.microsoft.com/en-us/documentation/articles/app-service-mobile-how-to-configure-microsoft-authentication/">Configure your App Service to use a Microsoft Account (MSA)</a>
+            <a target="_blank" href="https://auth0.com/docs/azure-tutorial">Configure your App Service to use Auth0</a>
+
+            <a target="_blank" href="https://github.com/Azure/azure-mobile-apps-net-client">Azure SDK Client .NET source code (Github)</a>        
+        </div>
+
+    </section>
+
+    <script src="./parts/res/js/jquery.min.js"></script>
+    <script src="./parts/res/js/prettify.js"></script>
+    <script src="./parts/res/js/script.js"></script>
+
+    <footer>Copyright (C) 2018 Xamarin Inc., Microsoft.<br><a target="_blank" href="http://university.xamarin.com">Visit Xamarin University for more classes and content</a></footer>
+</body>
+</html>
+

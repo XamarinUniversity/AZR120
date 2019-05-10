@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+    <title>Restore the user credentials</title>
+    <link rel="stylesheet" type="text/css" href="./res/styles/normalize.css">
+    <link rel="stylesheet" type="text/css" href="./res/styles/prettify.css" />
+    <link rel="stylesheet" type="text/css" href="./res/styles/styles.css">
+</head>
+
+<body>
+    <!-- Use the same title as the StartHere -->
+    <header>Authentication with Azure App Services</header>
+
+    <section id="main">
+
+        <h1 id="page-title"></h1>
+
+        <h2>Duration</h2>
+        <p>15 minutes</p>
+
+        <h2>Goals</h2>
+        <p>
+            In this lab exercise, you will continue your modification of the <b>MyDiary</b> Xamarin.Forms application and support caching off the token in secure storage. We will use the <a href="https://www.nuget.org/packages/sameerIOTApps.Plugin.SecureStorage/">SecureStorage</a> component to securely hold the data using each platform's unique APIs.
+        </p>
+
+        <h2>Assets</h2>
+        <p>
+            There is a completed version of the exercise in the <b>Exercise 2</b> folder.
+        </p>
+
+        <h2>Challenge</h2>
+        <p>
+        You can explore on your own to implement the functionality for your app, or use the step-by-step instructions below. Here are the high-level things we need to do in the app:
+        </p>
+        <ol>
+            <li>Add the <b>sameerIOTApps.Plugin.SecureStorage</b> package to all the projects in our solution.</li>
+            <li>Set a password in the Android and Windows platform-specific code which is used along with the native API to secure the data. Normally you would get this password from the user (e.g. a PIN), in this case, we'll retrieve some dynamic global data from the device:
+                <ul class="indent-none">
+                    <li><b>Android</b>: set the static <code>SecureStorageImplementation.StoragePassword</code> property to the <code>Android.OS.Build.Id</code> static property.</li>
+                    <li><b>Windows</b>: set the static <code>WinSecureStorageBase.StoragePassword</code> property to the <code>Package.Current.Id.ToString()</code> value.</li>
+                </ul>
+            </li>
+
+        <div class="hintblock">
+        <b>Note:</b> This approach isn't as secure as it could be - however it's not completely insecure either. The data will be encrypted on the device, and to decrypt it, you would need to impersonate the app (e.g. have access to the protected data stored by this app, signed by it's certificate) <em>and</em> know the password used. Since the data we are storing has a fairly limited lifetime, what we are doing here is relatively secure and likely "good enough" for this app's purposes. However, if we were storing more long-lived data, or data which was more confidential in nature, we'd definitely not want to have a password hard coded into the app. Check out the <b>ENT170</b> class for more details on security and protecting information.
+        </div>
+
+
+            <li>This library has four methods we will use in our <code>LoginAsync</code> method to save and restore the two properties in the <code>MobileServiceUser</code> object:</li>
+            <table class="grid">
+                <tr>
+                    <th>Method</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>CrossSecureStorage.Current.HasKey</code></td>
+                    <td>Return whether a given string based-key/value is stored in secure settings.</td>
+                </tr>
+                <tr>
+                    <td><code>CrossSecureStorage.Current.GetValue</code></td>
+                    <td>Retrieve a value from secure storage using a string-based key.</td>
+                </tr>
+                <tr>
+                    <td><code>CrossSecureStorage.Current.SetValue</code></td>
+                    <td>Set a value into secure storage associated with a string-based key.</td>
+                </tr>
+                <tr>
+                    <td><code>CrossSecureStorage.Current.DeleteKey</code></td>
+                    <td>Delete a key/value from secure storage.</td>
+                </tr>
+            </table>
+
+            <li>
+            	If you are deploying to iOS, and using iOS 10 or beyond, you also need to add a custom entitlement to the application to enable KeyChain access since the plug-in relies on the native secure keychain.
+            </li>
+        </ol>
+
+        <!-- Steps -->
+        <h1>Steps</h1>
+
+        <h2>Add and initialize the sameerIOTApps.Plugin.SecureStorage library</h2>
+        <p>
+        We will use the cross-platform <a href="https://www.nuget.org/packages/sameerIOTApps.Plugin.SecureStorage/">sameerIOTApps.Plugin.SecureStorage</a> NuGet package to store our data.
+        </p>
+        <ol>
+            <li>Add a reference to the <b>sameerIOTApps.Plugin.SecureStorage</b> NuGet package in all the platorm-specific projects. Note that if we'd used a PCL implementation for our shared code, we'd add a reference to that project as well.</li>
+            <li>Open the <b>MainActivity.cs</b> source file in the Android project and in the <code>OnCreate</code> override, add a call to set the <b>SecureStorageImplementation.StoragePassword</b> for the library. This should be done <em>before</em> you initialize Forms.
+            </li>
+<pre class="prettyprint codeblock">
+SecureStorageImplementation.StoragePassword = Build.Id;
+</pre>
+            <li>In the Windows project, open the <b>App.xaml.cs</b> source file and locate the <code>OnLaunched</code> override. Add a call to set the <code>WinSecureStorageBase.StoragePassword</code> field to a unique, static value. This should be done before the root frame is set.
+<pre class="prettyprint codeblock">
+WinSecureStorageBase.StoragePassword = Package.Current.Id.ToString();
+</pre>
+        </ol>
+
+        <h2>Add support to cache and reload the MobileServiceClient</h2>
+        <p>
+            Now that we have a way to store our token securely, let's cache it off and reload it.
+        </p>
+        <ol>
+            <li>Open the <b>AzureDiaryService.cs</b> source file in the shared code and locate your <code>LoginAsync</code> method we added earlier.</li>
+            <li>
+            Create two unique string constants to use as keys for the <b>userId</b> and <b>token</b>.
+            </li>
+            <li>
+            Use the <code>CrossSecureStorage.Current.HasValue</code> method to see if we have a userId and token stored before we do any login attempt. Remember to add a <code>using</code> statement for the <code>Plugin.SecureStorage</code> namespace to get to this class.
+            </li>
+            <li>If both values are present in our secure storage, retrieve them using the <code>CrossSecureStorage.Current.GetValue</code> method and create a new <code>MobileServiceUser</code> object.</li>
+            <li>Assign the new user object to the <code>azureClient.CurrentUser</code> property and return from method since we have a current user.</li>
+            <li>
+            If we don't have any credentials stored off, execute the login code - add an <code>await</code> call so we properly wait for the async operation, and then store the <code>azureClient.CurrentUser</code> values into the secure storage using your defined constant keys and the <code>CrossSecureStorage.Current.SetValue</code> method.
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'restore_creds');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="restore_creds" style="display:none;">
+<pre class="prettyprint">
+<mark>using Plugin.SecureStorage;</mark>
+...
+<mark>async</mark> Task LoginAsync()
+{
+    <mark>const string userIdKey = ":UserId";</mark>
+    <mark>const string tokenKey = ":Token";</mark>
+
+    <mark>if (CrossSecureStorage.Current.HasKey(userIdKey)</mark>
+    <mark>    &amp;&amp; CrossSecureStorage.Current.HasKey(tokenKey))</mark>
+    <mark>{</mark>
+    <mark>    string userId = CrossSecureStorage.Current.GetValue(userIdKey);</mark>
+    <mark>    string token = CrossSecureStorage.Current.GetValue(tokenKey);</mark>
+
+    <mark>    azureClient.CurrentUser = new MobileServiceUser(userId)</mark>
+    <mark>    {</mark>
+    <mark>        MobileServiceAuthenticationToken = token</mark>
+    <mark>    };</mark>
+    <mark>    return;</mark>
+    <mark>}</mark>
+
+    <mark>await</mark> PlatformLoginAsync(MobileServiceAuthenticationProvider.Facebook);
+
+    <mark>var user = azureClient.CurrentUser;</mark>
+    <mark>if (user != null)</mark>
+    <mark>{</mark>
+    <mark>    CrossSecureStorage.Current.SetValue(userIdKey, user.UserId);</mark>
+    <mark>    CrossSecureStorage.Current.SetValue(tokenKey, user.MobileServiceAuthenticationToken);</mark>
+    <mark>}</mark>
+}
+</pre></div></p>
+
+        <h2>Add custom entitlement to allow KeyChain access (iOS Only)</h2>
+        <p>
+            iOS10 restricts access to the KeyChain API, to enable this, we need a custom <b>Entitlements.plist</b> entry - even to run it on the simulator.
+        </p>
+        <div class="hintblock">
+        <b>Note:</b> You will need an iOS provisioning profile for the data protection use, but the default profile will work fine, even with free Apple Developer accounts. For more information about setting up provisioning profiles, check out the <a href="https://university.xamarin.com/lightninglectures/setting-up-an-ios-device-for-deployment">Setting Up an iOS Device for Deployment</a> Xamarin University lightning lecture.
+        </div>
+        <ol>
+            <li>Open the <b>MyDiary.iOS</b> project properties by double-clicking on the <b>Properties</b> node under the project in the Solution Explorer in Visual Studio for Windows, or on the project node itself on VS for Mac.</li>
+            <li>Set the configuration at the top of the property sheet to "All Configurations". In Visual Studio for Mac, you will need to set each configuration separately since it doesn't have an "All" option.</li>
+            <li>Select the <b>iOS Bundle Signing</b> tab in the property sheet.</li>
+            <li>Locate the <b>Custom entitlements:</b> field and either click the "..." button to locate the <b>entitlements.plist</b> file, or just type the filename directly into the field as shown below:</li>
+            <img src="./res/images/ex2-custom-entitlement.png" />
+            <li>In Visual Studio for Mac, repeat the steps for each build configuration.</li>
+            <li>Close the property sheet.</li>
+            <li>Next, double click on the <b>Entitlements.plist</b> file in the <b>MyDiary.iOS</b> project to open it in the property list editor.</li>
+            <li>In Visual Studio on Windows, locate the section for <b>Keychain Access Groups</b>, click the "+" button and type in the App ID "com.xamarin.mydiary" as shown below:</li>
+            <img style="max-width: 80%;" src="./res/images/ex2-entitlements-plist.png" />
+            <li>In Visual Studio for Mac, check the "Enable Keychain" checkbox under the <b>Keychain</b> section - this will add your App ID automatically - it should be "com.xamarin.mydiary".</li>
+            <img src="./res/images/ex2-entitlements-plist-mac.png" />
+            <li>Close the <b>entitlements.plist</b> file and rebuild the project.</li>
+        </ol>
+
+        <h2>Test the cached credentials</h2>
+        <p>
+            Now that the application caches off the token, try it out by running the application. The first time you run it, it should prompt you for your credentials. If you then stop the application and restart it, it should immediately load data and not ask for credentials!
+        </p>
+
+        <h1>Summary</h1>
+        <p>
+            In this exercise, you added support to the client application to cache off the user token to access Azure so we don't have to login each time. 
+            However, it has a significant issue; the token we are storing doesn't live forever. It's only valid for a short period of time before we have to get a new one. 
+            Next, we'll talk about how to refresh these tokens.
+        </p>
+        <div class="align-right">
+            <a href="../Start%20Here.html">Go Back</a>
+        </div>
+    </section>
+
+    <script src="./res/js/jquery.min.js"></script>
+    <script src="./res/js/prettify.js"></script>
+    <script src="./res/js/script.js"></script>
+
+    <footer>Copyright (C) 2018 Xamarin Inc., Microsoft.</footer>
+</body>
+</html>

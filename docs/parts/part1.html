@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+    <title>Add support to log in to an Azure App Service</title>
+    <link rel="stylesheet" type="text/css" href="./res/styles/normalize.css">
+    <link rel="stylesheet" type="text/css" href="./res/styles/prettify.css" />
+    <link rel="stylesheet" type="text/css" href="./res/styles/styles.css">
+</head>
+
+<body>
+    <!-- Use the same title as the StartHere -->
+    <header>Authentication with Azure App Services</header>
+
+    <section id="main">
+
+        <h1 id="page-title"></h1>
+
+        <h2>Duration</h2>
+        <p>20 minutes</p>
+
+        <h2>Goals</h2>
+        <p>
+            In this lab exercise, you will modify an existing Xamarin.Forms application to add support for utilizing an Azure mobile service. You can use any mix of the platform projects depending on your development environment (macOS or Windows). All variations are supplied (iOS, Android, and Universal Windows).
+        </p>
+
+        <h2>Assets</h2>
+        <p>
+            There is both a starter application which has the UI all built out and a completed version of the exercise in the <b>Exercise 1</b> folder.
+        </p>
+
+        <h2>Challenge</h2>
+        <p>
+        There are several steps we will take for this lab:
+        </p>
+        <ol>
+            <li>Run and explore the code for the starter project.</li>
+            <li>Switch the endpoint of the service to be a version that requires authentication and run the app to find that it now fails.</li>
+            <li>Add a call to `LoginAsync` against a known social provider in each of the platform-specific head projects.</li>
+            <li>Re-run the app to authenticate against the chosen provider and retrieve the diary entries.</li>
+        </ol>
+
+        <!-- Steps -->
+        <h1>Steps</h1>
+
+        <h2>Explore the Starter Solution</h2>
+        <p>
+        Open and explore the starter solution. The application is a Xamarin.Forms based diary application that will use Azure as the database. The application connects to an existing Azure service which does not require any authentication, and as you will see, all diary entries are visible to the world!
+        </p>
+        
+        <ol>
+            <li>Set your preferred platform-specific project as the startup project. Any of them will work.
+                <ul class="indent-none">
+                    <li><b>Hint:</b> For Windows projects, you will likely need to select a configuration other than "AnyCPU" (e.g. x86 or x64 [preferred]).</li>
+                </ul>
+            </li>
+            <li>Build and run the application to see it work.</li>
+            <img class="indent-none" src="./res/images/ex1-running-app.png" />
+
+            <br /><br />
+
+            <li>You can edit entries, add new ones, and even delete them. Notice that you can see entries which were entered by other people.
+
+            <li>Expand the solution - it contains several projects:</li>
+
+            <table class="grid">
+            <tr>
+                <th>Project</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>MyDiary</td>
+                <td>This is the core Xamarin.Forms Shared Project. It contains the <code>Page</code> definitions, the Azure data models, the ViewModels for the views, and the code which will interact with the service. It defines the Azure service as an interface - even though we don't have a different implementation. However this approach would allow us to mock it out for testing, or to even replace it with a different backend (or local database) if we wanted to. In effect, it minimizes the coupling of the Azure service from the rest of the code.
+                </td>
+            </tr>
+            <tr>
+                <td>MyDiary.Droid</td>
+                <td>The Xamarin.Android platform-specific (head) project.</td>
+            </tr>
+            <tr>
+                <td>MyDiary.iOS</td>
+                <td>The Xamarin.iOS platform-specific (head) project. You will need a macOS host to run this application.</td>
+            </tr>
+            <tr>
+                <td>MyDiary.UWP</td>
+                <td>The Windows UWP platform-specific (head) project. You will need to be using Windows to run this project. On the Mac, it will be disabled.</td>
+            </tr>
+            </table>
+            <br />
+
+            <li>
+            Take a few minutes and explore the solution - it's a pretty standard Xamarin.Forms application with Azure support - very much like the one built in <b>AZR115</b>.
+            </li>
+        </ol>
+
+        <h2>Switch to the authenticated service</h2>
+        <p>
+        As a first step, we will switch over to a different version of the service that requires authentication.
+        </p>
+        <ol>
+            <li>Open the <b>DiaryEntry.cs</b> source file in the <b>Models</b> folder in the shared project. This defines our DTO, which is passed back and forth between the service and client.</li>
+            <li>Recall from <b>AZR115</b> that the <em>name</em> of the DTO class decides the table endpoint you call. The current table being used is <b>/tables/diaryentry</b> which does not require any authentication. We want to change it to be <b>/tables/diaryentry2</b> which is a separate endpoint (using the same data) that <em>does</em> require authentication.</li>
+            <li>At the top of the class, add a <code>[JsonObject(Title="diaryentry2")]</code> attribute to change the endpoint.</li>
+            <li>
+            Remember: you will need to add a <code>using Newtonsoft.Json</code> statement, or fully qualify the attribute.</li>
+
+<pre class="codeblock prettyprint">
+<mark>[JsonObject(Title = "diaryentry2")]</mark>
+public class DiaryEntry
+{
+   ...
+}
+</pre>
+
+            <li>Run the application again. You might get an "Unauthorized" error, or you might see the same entries you saw earlier due to offline caching. In this latter case, until you try to <em>edit</em> the data, it's possible that all will seem fine! However, this is an illusion of the offline synchronization capabilities of Azure. Even if it fails initially, let's make sure we aren't caching data off without authentication.</li>
+
+            <li>Open the <b>AzureDiaryService.cs</b> source file in the <b>Services</b> folder in the shared code and locate the <code>InitializeAsync</code> method in the class.</li>
+
+            <li>Add a call to <code>PurgeAsync</code> in the <code>InitializeAsync</code> method just after it retrieves the <code>diaryTable</code>. Pass <b>true</b> to force it to clear the local database cache.</li>
+
+<pre class="codeblock prettyprint">
+private async Task InitializeAsync()
+{
+   ...
+   <mark>await diaryTable.PurgeAsync(true);</mark>
+}
+</pre>
+
+            <div class="hintblock">We will leave the call to <code>PurgeAsync</code> in place to ensure we are always refreshing our contents from the server initially as we've got a few other cases where our cached data will be invalidated. However, keep in mind that in a production application, we might remove this call and use this method when the user logs out, or when we want to do a full refresh.
+            </div>
+
+            <li>Run the application again to see the <em>real</em> results. You should get an error indicating that authentication is required.</li>
+            
+            <img class="indent-none" src="./res/images/ex1-needs-auth.png" />
+            
+            <li>This is a direct result of our attempt to call the service without an authentication token.</li>
+        </ol>
+
+        <h2>Authenticate to a social provider</h2>
+        <p>
+        Now that our service requires authentication, let's provide that by authenticating against a known social provider. The service has been configured to support Facebook, Twitter, Google, and Microsoft. You can use a valid email address registered with any of these for this objective.
+        </p>
+        <p>
+        Because the code for authenticating is always platform-specific, we need to make sure the call to <code>LoginAsync</code> is placed into each project. In this case, we are using a Shared Project for our shared code, so you can use <code>#ifdef</code> conditionals if you want, however the lab will use partial classes to segregate the code to make it cleaner.
+        </p>
+
+        <ol>
+            <li>Open the <b>AzureDiaryService.cs</b> file and add a new method named <code>LoginAsync</code> which we will use to do the log in step. It won't need any parameters but should return a <code>Task</code> result. This method can be private.</li>
+            <li>We will eventually add some more code to this method, but for now just add a single call to a new method named <code>PlatformLoginAsync</code> and pass a <code>MobileServiceAuthenticationProvider</code> enumeration type. In our code hint below, we will use Twitter, but remember it's up to you as to which social provider you want to authenticate against - all of them are supported by our service.</li>
+            <li>The <code>PlatformLoginAsync</code> method will be platform-specific and we want to place it into a separate source file as part of each platform-specific head project. To do this, we need to make this class a <code>partial</code> class - add that to the class definition. If you aren't familiar with this approach, check the hint below and make sure to go take the <b>XAM110</b> course where we walk about different ways to share code in Shared Projects! You can also use <code>#ifdef</code> conditions for the below code if you prefer.
+            </li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'shared_auth');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="shared_auth" style="display:none;">
+<pre class="prettyprint">
+public <mark>partial</mark> class AzureDiaryService : IDiaryService
+{
+    private const string AzureServiceUrl = "https://mysecurepersonaldiary.azurewebsites.net/";
+    ...
+    <mark>Task LoginAsync()</mark>
+    <mark>{</mark>
+    <mark>    return PlatformLoginAsync(MobileServiceAuthenticationProvider.Twitter);</mark>
+    <mark>}</mark>
+}
+</pre></div></p>   
+
+    <p>
+    Next, let's add the platform-specific code to each project. You will need to do this for each project you want to support - in addition, if you don't add the code, the platform-specific project will generate errors - so either unload the projects you don't want, or make sure to implement them all.
+    </p>
+
+    <div class="hintblock">
+    <b>Note:</b> Visual Studio may show red "squiggles" under the call to <code>PlatformLoginAsync</code> even after you've implemented it because it sometimes gets confused by partial classes split across Shared Projects. You can ignore this parsing error as long as it compiles - hopefully it will get fixed in a future update.
+    </div>
+
+    <h3>Android</h2>
+        <p>
+        Let's start with Android. The Android variation of <code>LoginAsync</code> requires the Activity <code>Context</code> - we could pass this in as part of our initialization, but it turns out there is a easier way; we can reach the Context by using the <code>Android.App.Application.Context</code> property.
+        </p>
+        
+        <ol>
+            <li>Add a new source file to the Android project (<b>MyDiary.Droid</b>) named <b>AzureDiaryService.cs</b>.</li>
+            <li>Change the namespace to be <code>MyDiary.Services</code> to match our shared code definition.</li>
+            <li>Add the <code>partial</code> directive to the class definition.</li>
+            <li>Create the <code>PlatformLoginAsync</code> method. It should:
+                <ul class="indent-none">
+                    <li>Take a <code>MobileServiceAuthenticationProvider</code> enumeration.</li>
+                    <li>Make a call to <code>azureClient.LoginAsync</code>, passing the provider enum value and the main activity <code>Context</code> which you can get from the static property <code>Android.App.Application.Context</code>.</li>
+                    <li>Return the <code>Task</code> from the <code>LoginAsync</code> call.</li>
+                </ul>
+            </li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'droid_init');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="droid_init" style="display:none;">
+<pre class="prettyprint">
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.MobileServices;
+
+namespace MyDiary.Services
+{
+    partial class AzureDiaryService
+    {
+        private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
+        {
+            return azureClient.LoginAsync(Android.App.Application.Context, provider);
+        }
+    }
+}
+</pre></div></p>        
+
+        <h3>iOS</h3>
+        <p>Next, let's move to the iOS platform-specific project.</p>
+        <ol>
+            <li>Do all the same steps as Android, except for this call to <code>LoginAsync</code>, you will need the root <code>UIViewController</code>. You can retrieve this using another static property available in Xamarin.iOS projects: <code>UIApplication.SharedApplication.KeyWindow.RootViewController</code>.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'ios_init');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="ios_init" style="display:none;">
+<pre class="prettyprint">
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.MobileServices;
+using UIKit;
+
+namespace MyDiary.Services
+{
+    partial class AzureDiaryService
+    {
+        private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
+        {
+            return azureClient.LoginAsync(UIApplication.SharedApplication.KeyWindow.RootViewController, provider);
+        }
+    }
+}
+</pre></div></p>        
+
+    <h3>Windows</h3>
+        <p>Finally, let's implement the Windows platform-specific project.</p>
+        <ol>
+            <li>This one is the easiest - add your new source file in the correct namespace and make a call to <code>LoginAsync</code>. In this case, you only need to pass the provider enumeration - everything else is known to the library without parameters.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'win_init');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="win_init" style="display:none;">
+<pre class="prettyprint">
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.MobileServices;
+
+namespace MyDiary.Services
+{
+    partial class AzureDiaryService
+    {
+        private Task PlatformLoginAsync(MobileServiceAuthenticationProvider provider)
+        {
+            return azureClient.LoginAsync(provider);
+        }
+    }
+}
+</pre></div></p>   
+
+        <p>
+        Rebuild the solution to make sure all your code is in place.
+        </p>
+
+
+        <h2>Integrate Log-in code into the Azure access code</h2>
+        <p>
+           We are ready to authenticate with Azure and our social provider. To make this as seamless as possible, we will integrate the log in code into our <code>SynchronizeAsync</code> method in our client's service access code. However, we could also do this as part of our application startup, or even have a dedicated login screen which we present to the user to select their preferred social provider (as an example).
+        </p>
+        <p>
+            All the code will be in the <code>SynchronizeAsync</code> method which is used to push our changes up to Azure and then pull down any updates made by other users/clients. There are two cases we need to look for:
+            <ol>
+                <li>We need to look for a <code>MobileServicePushStatus.CancelledByAuthenticationError</code> status code when we encounter a <code>MobileServicePushFailedException</code>. This is reported when we've <em>already</em> attempted authentication once and it either failed or was canceled.</li>
+                <li>We also need to look for a new exception of type <code>MobileServiceInvalidOperationException</code> which is thrown when we've not yet attempted authentication but it's required for the table endpoint we are hitting. In this case, we also want to look at the <code>Response.StatusCode</code> property and make sure it's an <b>Unauthorized</b> status.</li>
+            </ol>
+        </p>
+        <ol>
+            <li>Open the <b>AzureDiaryService.cs</b> and locate the <code>SynchronizeAsync</code> method.</li>
+            <li>Add a new <code>catch</code> handler <em>after</em> the current one of type <code>MobileServiceInvalidOperationException</code>. In that handler:
+                <ul class="indent-none">
+                    <li>Check the exception's <code>Response.StatusCode</code> property and compare it to the value <code>System.Net.HttpStatusCode.Unauthorized</code>.</li>
+                    <li>If it's a match, call the <code>LoginAsync</code> method (with an <code>await</code>), then call the <code>SynchronizeAsync</code> method again.</li>
+                </ul>
+            </li>
+            <li>Next, in the handler for the <code>MobileServicePushFailedException</code>, add some code to the beginning of the logic to check the exception's <code>PushResult.Status</code> code to see if it's <code>MobileServicePushStatus.CancelledByAuthenticationError</code>. This indicates we need authentication.</li>
+            <li>If it's a match, add the same code we used in the other exception: call <code>LoginAsync</code>, <code>SynchronizeAsync</code> and then return.</li>
+            <li>You can check your code against the completed code below:</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'synch');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="synch" style="display:none;">
+<pre class="prettyprint">
+using System.Net;
+...
+private async Task SynchronizeAsync()
+{
+    if (!CrossConnectivity.Current.IsConnected)
+        return;
+
+    try
+    {
+        await azureClient.SyncContext.PushAsync();
+        await diaryTable.PullAsync($"all{nameof(DiaryEntry)}", diaryTable.CreateQuery());
+    }
+    catch (MobileServicePushFailedException ex)
+    {
+        <mark>if (ex.PushResult.Status == MobileServicePushStatus.CancelledByAuthenticationError)</mark>
+        <mark>{</mark>
+        <mark>    await LoginAsync();</mark>
+        <mark>    await SynchronizeAsync();</mark>
+        <mark>    return;</mark>
+        <mark>}</mark>
+
+        if (ex.PushResult != null)
+            foreach (var result in ex.PushResult.Errors)
+                await ResolveError(result);
+    }
+    <mark>catch (MobileServiceInvalidOperationException ex)</mark>
+    <mark>{</mark>
+    <mark>    if (ex.Response.StatusCode == HttpStatusCode.Unauthorized)</mark>
+    <mark>    {</mark>
+    <mark>        await LoginAsync();</mark>
+    <mark>        await SynchronizeAsync();</mark>
+    <mark>        return;</mark>
+    <mark>    }</mark>
+    <mark>    throw;</mark>
+    <mark>}</mark>
+}
+</pre></div></p>           
+
+        <ol start="5">
+            <li>Run the application - it should now prompt you for the user/password of your selected identity provider and then allow you access to the service. As an example, here is Facebook authentication:</li>
+        <img class="indent-none" src="./res/images/ex1-facebook.png" />
+            <li>However, it <em>still</em> shows all user's data! So even though Azure now knows <em>who</em> we are (or has information about that), it doesn't really change the data access. We'll fix that in the section, but next we will talk about using the authenticated user data in our app.</li>
+        </ol>
+
+        <h1>Summary</h1>
+        <p>
+            In this exercise, you added support to an existing Xamarin.Forms application to access an Azure mobile service that requires authentication using the server-flow.
+        </p>
+        <div class="align-right">
+            <a href="../Start%20Here.html">Go Back</a>
+        </div>
+    </section>
+
+    <script src="./res/js/jquery.min.js"></script>
+    <script src="./res/js/prettify.js"></script>
+    <script src="./res/js/script.js"></script>
+
+    <footer>Copyright (C) 2018 Xamarin Inc., Microsoft.</footer>
+</body>
+</html>

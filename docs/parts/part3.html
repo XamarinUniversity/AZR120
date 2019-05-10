@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+    <title>Add support to refresh tokens</title>
+    <link rel="stylesheet" type="text/css" href="./res/styles/normalize.css">
+    <link rel="stylesheet" type="text/css" href="./res/styles/prettify.css" />
+    <link rel="stylesheet" type="text/css" href="./res/styles/styles.css">
+</head>
+
+<body>
+    <!-- Use the same title as the StartHere -->
+    <header>Authentication with Azure App Services</header>
+
+    <section id="main">
+
+        <h1 id="page-title"></h1>
+
+        <h2>Duration</h2>
+        <p>5 minutes</p>
+
+        <h2>Goals</h2>
+        <p>
+            In this demonstration, we will walk through changes made to our MyDiary Xamarin.Forms application to support refresh tokens.
+        </p>
+
+        <h2>Assets</h2>
+        <p>
+            There is a completed version of the exercise in the <b>Exercise 3</b> folder.
+        </p>
+
+        <h2>Changes</h2>
+        <p>
+        You can explore the completed project on your own - changes are marked with comments prefaced with <b>Lab3:</b>; here are the relevant changes made to the application to support refresh tokens - compare it to the prior exercise's Completed solution to get a full delta.
+        </p>
+        <ol>
+            <li>To support re-authentication, a new "logout" button has been added to the toolbar for the <b>DiaryEntryPage.xaml</b> file. This button activates a new <code>Command</code> which has been added in the <code>MainViewModel.cs</code> file that calls a new <code>LogoffAsync</code> method added to the Azure service access code in <b>AzureDiaryService.cs</b>.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'logout_button');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="logout_button" style="display:none;">
+<pre class="prettyprint">
+&lt;!-- In DiaryEntryPage.xaml --&gt;
+
+&lt;ContentPage.ToolbarItems&gt;
+    &lt;ToolbarItem Icon="new_entry.png" Text="Add" Command="{Binding AddEntry}" /&gt;
+    &lt;ToolbarItem Icon="trash.png" Text="Delete" Command="{Binding DeleteEntry}" /&gt;
+    <mark>&lt;ToolbarItem Icon="logoff.png" Text="Logout" Command="{Binding Logout}" /&gt;</mark>
+&lt;/ContentPage.ToolbarItems&gt;
+</pre><pre class="prettyprint">
+public class MainViewModel : SimpleViewModel
+{
+    ...
+
+    <mark>public IAsyncDelegateCommand Logout { get; private set; }</mark>
+
+    ...
+
+    public MainViewModel(IDependencyService serviceLocator)
+    {
+        ...
+        <mark>Logout = new AsyncDelegateCommand(OnClearAuthAsync);</mark>
+        ...
+    }
+
+    <mark>private async Task OnClearAuthAsync()</mark>
+    <mark>{</mark>
+    <mark>    await diaryService.LogoffAsync();</mark>
+    <mark>    await deEntries.RefreshAsync();</mark>
+    <mark>    SelectedEntry = deEntries.FirstOrDefault();</mark>
+    <mark>}</mark>
+
+    ...
+}
+</pre></div></p>
+
+        <ol start="2">
+            <li>The <code>LoginAsync</code> code in the <b>AzureDiaryService.cs</b> source file has been rewritten to support checking for an expired token and then calling the <code>RefreshUserAsync</code> method to refresh the token.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'refresh_token');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="refresh_token" style="display:none;">
+<pre class="prettyprint">
+async Task LoginAsync()
+{
+    // See if we have a token cached off.
+    if (CrossSecureStorage.Current.HasKey(UserIdKey)
+        && CrossSecureStorage.Current.HasKey(TokenKey))
+    {
+        string userId = CrossSecureStorage.Current.GetValue(UserIdKey);
+        string token = CrossSecureStorage.Current.GetValue(TokenKey);
+
+        <mark>// Check for an expired token</mark>
+        <mark>if (!IsTokenExpired(token))</mark>
+        <mark>{</mark>
+        <mark>    azureClient.CurrentUser = new MobileServiceUser(userId)</mark>
+        <mark>    {</mark>
+        <mark>        MobileServiceAuthenticationToken = token</mark>
+        <mark>    };</mark>
+        <mark>    return;</mark>
+        <mark>}</mark>
+
+        <mark>// Expired; refresh it.</mark>
+        <mark>try</mark>
+        <mark>{</mark>
+        <mark>    // Only works with Google, MSA and Azure.</mark>
+        <mark>    await azureClient.RefreshUserAsync();</mark>
+        <mark>}</mark>
+        <mark>catch</mark>
+        <mark>{</mark>
+        <mark>    // Failed - clear local user cache.</mark>
+        <mark>    await azureClient.LogoutAsync();</mark>
+        <mark>}</mark>
+    }
+
+    ...
+}
+</pre></div></p>
+
+        <ol start="3">
+            <li>A new helper method has been added to the <b>AzureDiaryService.cs</b> source file to break the JWT apart and get the expiration date.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'token_helper');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="token_helper" style="display:none;">
+<pre class="prettyprint">
+/// &lt;summary&gt;
+/// Check to see whether a JWT token has expired.
+/// See original code from https://github.com/jwt-dotnet/jwt/blob/master/src/JWT/JWT.cs
+/// &lt;/summary&gt;
+/// &lt;param name="token"&gt;Encoded JWT token&lt;/param&gt;
+/// &lt;returns&gt;True/False&lt;/returns&gt;
+private bool IsTokenExpired(string token)
+{
+    // No token == expired.
+    if (string.IsNullOrEmpty(token))
+        return true;
+
+    // Split the string apart; we want the JSON payload.
+    string[] parts = token.Split('.');
+    if (parts.Length != 3)
+        throw new ArgumentException("Token must consist from 3 delimited by dot parts.");
+
+    string jwt = parts[1]
+        .Replace('-', '+')  // 62nd char of encoding
+        .Replace('_', '/'); // 63rd char of encoding
+    switch (jwt.Length % 4) // Pad with trailing '='s
+    {
+        case 0: break; // No pad chars in this case
+        case 2: jwt += "=="; break; // Two pad chars
+        case 3: jwt += "="; break;  // One pad char
+        default:
+            throw new ArgumentException("Token is not a valid Base64 string.");
+    }
+
+    // Convert to a JSON string (std. Base64 decode)
+    string json = Encoding.UTF8.GetString(Convert.FromBase64String(jwt));
+
+    // Get the expiration date from the JSON object.
+    var jsonObj = JObject.Parse(json);
+    var exp = Convert.ToDouble(jsonObj["exp"].ToString());
+
+    // JWT expiration is an offset from 1/1/1970 UTC
+    var expire = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(exp);
+    return expire < DateTime.UtcNow;
+}
+</pre></div></p>
+
+        <ol start="4">
+            <li>Finally, the code now uses Microsoft as the Identity Provider as it's one of the three providers that supports token refreshing.</li>
+        </ol>
+
+<p><a href="#" onclick="toggleCode(this,'switch_provider');return false;" class="uiitem">Show Code</a><div class="indent-medium" id="switch_provider" style="display:none;">
+<pre class="prettyprint">
+async Task LoginAsync()
+{
+    ...
+
+    <mark>if (azureClient.CurrentUser == null)</mark>
+    <mark>{</mark>
+    <mark>    await PlatformLoginAsync(MobileServiceAuthenticationProvider.MicrosoftAccount);</mark>
+    <mark>}</mark>
+
+    var user = azureClient.CurrentUser;
+    if (user != null)
+    {
+        CrossSecureStorage.Current.SetValue(userIdKey, user.UserId);
+        CrossSecureStorage.Current.SetValue(tokenKey, user.MobileServiceAuthenticationToken);
+    }
+}
+</pre></div></p>
+
+        <div class="align-right">
+            <a href="../Start%20Here.html">Go Back</a>
+        </div>
+    </section>
+
+    <script src="./res/js/jquery.min.js"></script>
+    <script src="./res/js/prettify.js"></script>
+    <script src="./res/js/script.js"></script>
+
+    <footer>Copyright (C) 2018 Xamarin Inc., Microsoft.</footer>
+</body>
+</html>
